@@ -1,7 +1,7 @@
 # Simple URI Parser
 
 This is a simple, header only C++ library to allow parsing of URIs as defined by
-the URI generic schema (https://datatracker.ietf.org/doc/html/rfc2396).
+the URI generic schema (https://datatracker.ietf.org/doc/html/rfc3986).
 
 This schema looks like
 
