@@ -1,9 +1,10 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.18)
 project(uri_parser)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_library(uri-parser INTERFACE uri_parser.h)
+add_library(uri-parser INTERFACE)
+target_include_directories(uri-parser INTERFACE .)
 
 include(FetchContent)
 
