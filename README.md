@@ -1,3 +1,5 @@
+![Build](https://github.com/jholloc/simple-uri-parser/actions/workflows/cmake.yml/badge.svg)
+
 # Simple URI Parser
 
 This is a simple, header only C++ library to allow parsing of URIs as defined by
