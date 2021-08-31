@@ -5,7 +5,27 @@
 #include <unordered_map>
 #include <algorithm>
 
+#ifndef   simple_uri_CPLUSPLUS
+# if defined(_MSVC_LANG ) && !defined(__clang__)
+#  define nssv_CPLUSPLUS  (_MSC_VER == 1900 ? 201103L : _MSVC_LANG )
+# else
+#  define simple_uri_CPLUSPLUS  __cplusplus
+# endif
+#endif
+
+#define simple_uri_CPP17_OR_GREATER  ( simple_uri_CPLUSPLUS >= 201703L )
+
 namespace uri {
+
+#if simple_uri_CPP17_OR_GREATER
+  using string_view_type = std::string_view;
+  using string_arg_type = std::string_view;
+  constexpr auto npos = std::string_view::npos;
+#else
+  using string_view_type = std::string;
+  using string_arg_type = const std::string&;
+  constexpr auto npos = std::string::npos;
+#endif
 
 using query_type = std::unordered_map<std::string, std::string>;
 
@@ -24,7 +44,7 @@ struct Authority {
 
 namespace impl {
 
-bool valid_scheme(std::string_view scheme) {
+bool valid_scheme(string_arg_type scheme) {
     if (scheme.empty()) {
         return false;
     }
@@ -34,9 +54,9 @@ bool valid_scheme(std::string_view scheme) {
     return pos == scheme.end();
 }
 
-std::tuple<std::string, Error, std::string_view> parse_scheme(std::string_view uri) {
+std::tuple<std::string, Error, string_view_type> parse_scheme(string_arg_type uri) {
     auto pos = uri.find(':');
-    if (pos == std::string_view::npos) {
+    if (pos == npos) {
         return { "", Error::InvalidScheme, uri };
     }
 
@@ -48,11 +68,10 @@ std::tuple<std::string, Error, std::string_view> parse_scheme(std::string_view u
     std::transform(scheme_string.begin(), scheme_string.end(), scheme_string.begin(),
                    [](unsigned char c){ return std::tolower(c); });
 
-    uri = uri.substr(pos + 1);
-    return { scheme_string, Error::None, uri };
+    return { scheme_string, Error::None, uri.substr(pos + 1) };
 }
 
-std::tuple<Authority, Error, std::string_view> parse_authority(std::string_view uri) {
+std::tuple<Authority, Error, string_view_type> parse_authority(string_arg_type uri) {
     Authority authority;
 
     bool has_authority = uri.length() >= 2 && uri[0] == '/' && uri[1] == '/';
@@ -62,10 +81,11 @@ std::tuple<Authority, Error, std::string_view> parse_authority(std::string_view 
 
     auto pos = uri.substr(2).find('/');
     auto auth_string = uri.substr(2, pos);
+    auto rem = uri.substr(pos + 2);
     authority.authority = auth_string;
 
     pos = auth_string.find('@');
-    if (pos != std::string_view::npos) {
+    if (pos != npos) {
         authority.userinfo = std::string(auth_string.substr(0, pos));
         auth_string = auth_string.substr(pos + 1);
     }
@@ -73,9 +93,9 @@ std::tuple<Authority, Error, std::string_view> parse_authority(std::string_view 
     char* end_ptr = nullptr;
     if (!auth_string.empty() && auth_string[0] != '[') {
         pos = auth_string.find(':');
-        if (pos != std::string_view::npos) {
+        if (pos != npos) {
             authority.port = std::strtol(&auth_string[pos + 1], &end_ptr, 10);
-            if (end_ptr != auth_string.end()) {
+            if (end_ptr != &*auth_string.end()) {
                 return { authority, Error::InvalidPort, auth_string };
             }
         }
@@ -83,21 +103,21 @@ std::tuple<Authority, Error, std::string_view> parse_authority(std::string_view 
 
     authority.host = auth_string.substr(0, pos);
 
-    return { authority, Error::None, end_ptr == nullptr ? auth_string.end() : end_ptr };
+    return { authority, Error::None, rem };
 }
 
-std::tuple<std::string, Error, std::string_view> parse_path(std::string_view uri) {
+std::tuple<std::string, Error, string_view_type> parse_path(string_arg_type uri) {
     auto pos = uri.find_first_of("#?");
-    if (pos == std::string_view::npos) {
+    if (pos == npos) {
         auto path = std::string(uri);
-        return { path, Error::None, uri.end() };
+        return { path, Error::None, "" };
     } else {
         auto path = std::string(uri.substr(0, pos));
         return { path, Error::None, uri.substr(pos + 1) };
     }
 }
 
-std::tuple<query_type, std::string, Error, std::string_view> parse_query(std::string_view uri) {
+std::tuple<query_type, std::string, Error, string_view_type> parse_query(string_arg_type uri) {
     auto hash_pos = uri.find('#');
     auto query_substring = uri.substr(0, hash_pos);
     auto query_string = std::string(query_substring);
@@ -106,12 +126,12 @@ std::tuple<query_type, std::string, Error, std::string_view> parse_query(std::st
         auto delim_pos = query_substring.find_first_of("&;?", 0);
         auto arg = query_substring.substr(0, delim_pos);
         auto equals_pos = arg.find('=');
-        if (equals_pos == std::string_view::npos) {
+        if (equals_pos == npos) {
             query[std::string(arg)] = "";
         } else {
             query[std::string(arg.substr(0, equals_pos))] = arg.substr(equals_pos + 1);
         }
-        if (delim_pos == std::string_view::npos) {
+        if (delim_pos == npos) {
             query_substring = "";
         } else {
             query_substring = query_substring.substr(delim_pos + 1);
@@ -121,7 +141,7 @@ std::tuple<query_type, std::string, Error, std::string_view> parse_query(std::st
     return {query, query_string, Error::None, uri.substr(hash_pos + 1) };
 }
 
-std::tuple<std::string, Error, std::string_view> parse_fragment(std::string_view uri) {
+std::tuple<std::string, Error, string_view_type> parse_fragment(string_arg_type uri) {
     return { std::string(uri), Error::None, uri };
 }
 
@@ -137,11 +157,12 @@ struct Uri {
     std::string fragment;
 };
 
-Uri parse_uri(std::string_view uri) {
+Uri parse_uri(string_arg_type uri_in) {
     Error error;
 
+    string_view_type uri;
     std::string scheme;
-    std::tie(scheme, error, uri) = impl::parse_scheme(uri);
+    std::tie(scheme, error, uri) = impl::parse_scheme(uri_in);
     if (error != Error::None) {
         return Uri{ error };
     }

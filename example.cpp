@@ -7,6 +7,7 @@ int main()
     auto uri = uri::parse_uri("https://john.doe@www.example.com:123/forum/questions/?tag=networking&order=newest#top");
 
     std::cout << uri.scheme << std::endl;               // https
+    std::cout << uri.authority.authority << std::endl;  // john.doe@www.example.com:123
     std::cout << uri.authority.userinfo << std::endl;   // john.doe
     std::cout << uri.authority.host << std::endl;       // www.example.com
     std::cout << uri.authority.port << std::endl;       // 123
