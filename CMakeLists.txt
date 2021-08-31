@@ -16,8 +16,12 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(Catch2)
 
+add_executable(example example.cpp)
+target_link_libraries(example uri-parser)
+
+enable_testing()
+
 add_executable(tests tests.cpp)
 target_link_libraries(tests PRIVATE Catch2::Catch2WithMain uri-parser)
 
-add_executable(example example.cpp)
-target_link_libraries(example uri-parser)
+add_test(test tests)
