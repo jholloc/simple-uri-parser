@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef SIMPLE_URI_PARSER_LIBRARY_H
 #define SIMPLE_URI_PARSER_LIBRARY_H
 
@@ -5,11 +7,11 @@
 #include <unordered_map>
 #include <algorithm>
 
-#ifndef   simple_uri_CPLUSPLUS
+#ifndef simple_uri_CPLUSPLUS
 # if defined(_MSVC_LANG ) && !defined(__clang__)
-#  define nssv_CPLUSPLUS  (_MSC_VER == 1900 ? 201103L : _MSVC_LANG )
+#  define simple_uri_CPLUSPLUS (_MSC_VER == 1900 ? 201103L : _MSVC_LANG )
 # else
-#  define simple_uri_CPLUSPLUS  __cplusplus
+#  define simple_uri_CPLUSPLUS __cplusplus
 # endif
 #endif
 
