@@ -42,111 +42,6 @@ struct Authority {
     long port = 0;
 };
 
-namespace impl {
-
-bool valid_scheme(string_arg_type scheme) {
-    if (scheme.empty()) {
-        return false;
-    }
-    auto pos = std::find_if_not(scheme.begin(), scheme.end(), [&](char c){
-        return std::isalnum(c) || c == '+' || c == '.' || c == '-';
-    });
-    return pos == scheme.end();
-}
-
-std::tuple<std::string, Error, string_view_type> parse_scheme(string_arg_type uri) {
-    auto pos = uri.find(':');
-    if (pos == npos) {
-        return { "", Error::InvalidScheme, uri };
-    }
-
-    auto scheme = uri.substr(0, pos);
-    if (!impl::valid_scheme(scheme)) {
-        return { "", Error::InvalidScheme, uri };
-    }
-    std::string scheme_string{ scheme };
-    std::transform(scheme_string.begin(), scheme_string.end(), scheme_string.begin(),
-                   [](unsigned char c){ return std::tolower(c); });
-
-    return { scheme_string, Error::None, uri.substr(pos + 1) };
-}
-
-std::tuple<Authority, Error, string_view_type> parse_authority(string_arg_type uri) {
-    Authority authority;
-
-    bool has_authority = uri.length() >= 2 && uri[0] == '/' && uri[1] == '/';
-    if (!has_authority) {
-        return { authority, Error::None, uri };
-    }
-
-    auto pos = uri.substr(2).find('/');
-    auto auth_string = uri.substr(2, pos);
-    auto rem = uri.substr(pos + 2);
-    authority.authority = auth_string;
-
-    pos = auth_string.find('@');
-    if (pos != npos) {
-        authority.userinfo = std::string(auth_string.substr(0, pos));
-        auth_string = auth_string.substr(pos + 1);
-    }
-
-    char* end_ptr = nullptr;
-    if (!auth_string.empty() && auth_string[0] != '[') {
-        pos = auth_string.find(':');
-        if (pos != npos) {
-            authority.port = std::strtol(&auth_string[pos + 1], &end_ptr, 10);
-            if (end_ptr != &*auth_string.end()) {
-                return { authority, Error::InvalidPort, auth_string };
-            }
-        }
-    }
-
-    authority.host = auth_string.substr(0, pos);
-
-    return { authority, Error::None, rem };
-}
-
-std::tuple<std::string, Error, string_view_type> parse_path(string_arg_type uri) {
-    auto pos = uri.find_first_of("#?");
-    if (pos == npos) {
-        auto path = std::string(uri);
-        return { path, Error::None, "" };
-    } else {
-        auto path = std::string(uri.substr(0, pos));
-        return { path, Error::None, uri.substr(pos + 1) };
-    }
-}
-
-std::tuple<query_type, std::string, Error, string_view_type> parse_query(string_arg_type uri) {
-    auto hash_pos = uri.find('#');
-    auto query_substring = uri.substr(0, hash_pos);
-    auto query_string = std::string(query_substring);
-    query_type query;
-    while (!query_substring.empty()) {
-        auto delim_pos = query_substring.find_first_of("&;?", 0);
-        auto arg = query_substring.substr(0, delim_pos);
-        auto equals_pos = arg.find('=');
-        if (equals_pos == npos) {
-            query[std::string(arg)] = "";
-        } else {
-            query[std::string(arg.substr(0, equals_pos))] = arg.substr(equals_pos + 1);
-        }
-        if (delim_pos == npos) {
-            query_substring = "";
-        } else {
-            query_substring = query_substring.substr(delim_pos + 1);
-        }
-    }
-
-    return {query, query_string, Error::None, uri.substr(hash_pos + 1) };
-}
-
-std::tuple<std::string, Error, string_view_type> parse_fragment(string_arg_type uri) {
-    return { std::string(uri), Error::None, uri };
-}
-
-} // namespace impl
-
 struct Uri {
     Error error;
     std::string scheme;
@@ -157,37 +52,146 @@ struct Uri {
     std::string fragment;
 };
 
-Uri parse_uri(string_arg_type uri_in) {
+}
+
+namespace {
+
+bool valid_scheme(uri::string_arg_type scheme) {
+    if (scheme.empty()) {
+        return false;
+    }
+    auto pos = std::find_if_not(scheme.begin(), scheme.end(), [&](char c){
+        return std::isalnum(c) || c == '+' || c == '.' || c == '-';
+    });
+    return pos == scheme.end();
+}
+
+std::tuple<std::string, uri::Error, uri::string_view_type> parse_scheme(string_arg_type uri) {
+    auto pos = uri.find(':');
+    if (pos == uri::npos) {
+        return { "", uri::Error::InvalidScheme, uri };
+    }
+
+    auto scheme = uri.substr(0, pos);
+    if (!::valid_scheme(scheme)) {
+        return { "", uri::Error::InvalidScheme, uri };
+    }
+    std::string scheme_string{ scheme };
+    std::transform(scheme_string.begin(), scheme_string.end(), scheme_string.begin(),
+                   [](unsigned char c){ return std::tolower(c); });
+
+    return { scheme_string, uri::Error::None, uri.substr(pos + 1) };
+}
+
+std::tuple<uri::Authority, uri::Error, uri::string_view_type> parse_authority(uri::string_arg_type uri) {
+    uri::Authority authority;
+
+    bool has_authority = uri.length() >= 2 && uri[0] == '/' && uri[1] == '/';
+    if (!has_authority) {
+        return { authority, uri::Error::None, uri };
+    }
+
+    auto pos = uri.substr(2).find('/');
+    auto auth_string = uri.substr(2, pos);
+    auto rem = uri.substr(pos + 2);
+    authority.authority = auth_string;
+
+    pos = auth_string.find('@');
+    if (pos != uri::npos) {
+        authority.userinfo = std::string(auth_string.substr(0, pos));
+        auth_string = auth_string.substr(pos + 1);
+    }
+
+    char* end_ptr = nullptr;
+    if (!auth_string.empty() && auth_string[0] != '[') {
+        pos = auth_string.find(':');
+        if (pos != uri::npos) {
+            authority.port = std::strtol(&auth_string[pos + 1], &end_ptr, 10);
+            if (end_ptr != &*auth_string.end()) {
+                return { authority, uri::Error::InvalidPort, auth_string };
+            }
+        }
+    }
+
+    authority.host = auth_string.substr(0, pos);
+
+    return { authority, uri::Error::None, rem };
+}
+
+std::tuple<std::string, uri::Error, uri::string_view_type> parse_path(uri::string_arg_type uri) {
+    auto pos = uri.find_first_of("#?");
+    if (pos == uri::npos) {
+        auto path = std::string(uri);
+        return { path, uri::Error::None, "" };
+    } else {
+        auto path = std::string(uri.substr(0, pos));
+        return { path, uri::Error::None, uri.substr(pos + 1) };
+    }
+}
+
+std::tuple<uri::query_type, std::string, uri::Error, uri::string_view_type> parse_query(uri::string_arg_type uri) {
+    auto hash_pos = uri.find('#');
+    auto query_substring = uri.substr(0, hash_pos);
+    auto query_string = std::string(query_substring);
+    uri::query_type query;
+    while (!query_substring.empty()) {
+        auto delim_pos = query_substring.find_first_of("&;?", 0);
+        auto arg = query_substring.substr(0, delim_pos);
+        auto equals_pos = arg.find('=');
+        if (equals_pos == uri::npos) {
+            query[std::string(arg)] = "";
+        } else {
+            query[std::string(arg.substr(0, equals_pos))] = arg.substr(equals_pos + 1);
+        }
+        if (delim_pos == uri::npos) {
+            query_substring = "";
+        } else {
+            query_substring = query_substring.substr(delim_pos + 1);
+        }
+    }
+
+    return {query, query_string, uri::Error::None, uri.substr(hash_pos + 1) };
+}
+
+std::tuple<std::string, uri::Error, uri::string_view_type> parse_fragment(uri::string_arg_type uri) {
+    return { std::string(uri), uri::Error::None, uri };
+}
+
+} // anon namespace
+
+namespace uri {
+
+inline Uri parse_uri(uri::string_arg_type uri_in) {
     Error error;
 
     string_view_type uri;
     std::string scheme;
-    std::tie(scheme, error, uri) = impl::parse_scheme(uri_in);
+    std::tie(scheme, error, uri) = ::parse_scheme(uri_in);
     if (error != Error::None) {
         return Uri{ error };
     }
 
     Authority authority;
-    std::tie(authority, error, uri) = impl::parse_authority(uri);
+    std::tie(authority, error, uri) = ::parse_authority(uri);
     if (error != Error::None) {
         return Uri{ error };
     }
 
     std::string path;
-    std::tie(path, error, uri) = impl::parse_path(uri);
+    std::tie(path, error, uri) = ::parse_path(uri);
     if (error != Error::None) {
         return Uri{ error };
     }
 
     query_type query;
     std::string query_string;
-    std::tie(query, query_string, error, uri) = impl::parse_query(uri);
+    std::tie(query, query_string, error, uri) = ::parse_query(uri);
     if (error != Error::None) {
         return Uri{ error };
     }
 
     std::string fragment;
-    std::tie(fragment, error, uri) = impl::parse_fragment(uri);
+    std::tie(fragment, error, uri) = ::parse_fragment(uri);
     if (error != Error::None) {
         return Uri{ error };
     }
