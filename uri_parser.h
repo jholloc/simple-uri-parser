@@ -197,13 +197,13 @@ inline Uri parse_uri(uri::string_arg_type uri_in) {
     }
 
     return Uri{
-        .error = Error::None,
-        .scheme = scheme,
-        .authority = authority,
-        .path = path,
-        .query = query,
-        .query_string = query_string,
-        .fragment = fragment,
+        Error::None,
+        scheme,
+        authority,
+        path,
+        query,
+        query_string,
+        fragment,
     };
 }
 
