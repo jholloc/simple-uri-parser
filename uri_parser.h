@@ -52,6 +52,17 @@ struct Uri {
     query_type query = {};
     std::string query_string;
     std::string fragment;
+
+    explicit Uri(Error error) : error(error) {}
+    Uri(std::string scheme, Authority authority, std::string path, query_type query, std::string query_string, std::string fragment)
+        : error(Error::None)
+        , scheme(std::move(scheme))
+        , authority(std::move(authority))
+        , path(std::move(path))
+        , query(std::move(query))
+        , query_string(std::move(query_string))
+        , fragment(std::move(fragment))
+        {}
 };
 
 }
@@ -170,43 +181,35 @@ inline Uri parse_uri(uri::string_arg_type uri_in) {
     std::string scheme;
     std::tie(scheme, error, uri) = ::parse_scheme(uri_in);
     if (error != Error::None) {
-        return Uri{ error };
+        return Uri(error);
     }
 
     Authority authority;
     std::tie(authority, error, uri) = ::parse_authority(uri);
     if (error != Error::None) {
-        return Uri{ error };
+        return Uri(error);
     }
 
     std::string path;
     std::tie(path, error, uri) = ::parse_path(uri);
     if (error != Error::None) {
-        return Uri{ error };
+        return Uri(error);
     }
 
     query_type query;
     std::string query_string;
     std::tie(query, query_string, error, uri) = ::parse_query(uri);
     if (error != Error::None) {
-        return Uri{ error };
+        return Uri(error);
     }
 
     std::string fragment;
     std::tie(fragment, error, uri) = ::parse_fragment(uri);
     if (error != Error::None) {
-        return Uri{ error };
+        return Uri(error);
     }
 
-    return Uri{
-        Error::None,
-        scheme,
-        authority,
-        path,
-        query,
-        query_string,
-        fragment,
-    };
+    return Uri(scheme, authority, path, query, query_string, fragment);
 }
 
 } // namespace uri
