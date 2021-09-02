@@ -66,7 +66,7 @@ bool valid_scheme(uri::string_arg_type scheme) {
     return pos == scheme.end();
 }
 
-std::tuple<std::string, uri::Error, uri::string_view_type> parse_scheme(string_arg_type uri) {
+std::tuple<std::string, uri::Error, uri::string_view_type> parse_scheme(uri::string_arg_type uri) {
     auto pos = uri.find(':');
     if (pos == uri::npos) {
         return { "", uri::Error::InvalidScheme, uri };
