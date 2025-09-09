@@ -50,25 +50,31 @@ TEST_CASE( "Valid authority with invalid port", "[auth]" ) {
     REQUIRE( uri.error == uri::Error::InvalidPort );
 }
 
-TEST_CASE( "Valid valid path with authority", "[path]" ) {
+TEST_CASE( "Valid empty path with authority", "[path]" ) {
+    auto uri = uri::parse_uri("news://user@example.com:5432/");
+    REQUIRE( uri.error == uri::Error::None );
+    REQUIRE( uri.path == "/" );
+}
+
+TEST_CASE( "Valid path with authority", "[path]" ) {
     auto uri = uri::parse_uri("news://user@example.com:5432/test/path");
     REQUIRE( uri.error == uri::Error::None );
     REQUIRE( uri.path == "/test/path" );
 }
 
-TEST_CASE( "Valid valid path with empty authority", "[path" ) {
+TEST_CASE( "Valid path with empty authority", "[path]" ) {
     auto uri = uri::parse_uri("news:///test/path");
     REQUIRE( uri.error == uri::Error::None );
     REQUIRE( uri.path == "/test/path" );
 }
 
-TEST_CASE( "Valid valid path with no authority", "[path]" ) {
+TEST_CASE( "Valid path with no authority", "[path]" ) {
     auto uri = uri::parse_uri("news:/test/path");
     REQUIRE( uri.error == uri::Error::None );
     REQUIRE( uri.path == "/test/path" );
 }
 
-TEST_CASE( "Valid valid path without slashes and with no authority", "[path]" ) {
+TEST_CASE( "Valid path without slashes and with no authority", "[path]" ) {
     auto uri = uri::parse_uri("news:test_path");
     REQUIRE( uri.error == uri::Error::None );
     REQUIRE( uri.path == "test_path" );
